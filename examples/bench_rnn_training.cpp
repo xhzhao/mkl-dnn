@@ -9,7 +9,7 @@ using namespace mkldnn;
 
 const int args_count = 5;
 const int warmups = 20;
-const int iters = 1000;
+const int iters = 300;
 
 void run(int seq_length_max , int batch, int input_size, int feature_size){
 	// hidden layer feature's size =input feature size
@@ -475,7 +475,9 @@ void run(int seq_length_max , int batch, int input_size, int feature_size){
         bwd_net.push_back(dst_layer_bwd_reorder);
 
     bwd_net.push_back(layer_bwd);
-
+		stream(stream::kind::eager).submit(fwd_net).wait();
+			stream(stream::kind::eager).submit(bwd_net).wait();
+/*
 	struct timeval start, end;
 	for (int i =0; i < warmups + iters; i++) {
 		if (i == warmups) {
@@ -494,6 +496,7 @@ void run(int seq_length_max , int batch, int input_size, int feature_size){
   double t = (end.tv_sec - start.tv_sec) + (end.tv_usec -start.tv_usec) / 1000000.0;
   double avg_t = t / iters;
   std::cout << "\ttime " << avg_t << " s" << "\tSPS " << batch/ avg_t << std::endl;
+*/
 }
 
 
@@ -510,9 +513,14 @@ int main(int argc, char **argv) {
   int T = std::atoi(argv[index++]);
   int I = std::atoi(argv[index++]);
   int H = std::atoi(argv[index++]);
-  std::cout << "testing LSTM: N: " << N << " T: " << T << " I: "<< I << " H: " << H;
+  std::cout << "testing LSTM: N: " << N << " T: " << T << " I: "<< I << " H: " << H << std::endl;;
 
   try {
+    run(T, N, I, H);
+    run(T, N, I, H);
+    run(T, N, I, H);
+    run(T, N, I, H);
+    run(T, N, I, H);
     run(T, N, I, H);
   } catch (error &e) {
     std::cerr << "status: " << e.status << std::endl;
