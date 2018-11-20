@@ -350,9 +350,9 @@ elemwise_sig(_ref_rnn_common_t<prop_kind::forward>::gru_lbr_elemwise) {
             ws_gates(i, 1 * dic + j) = logistic_fwd(ws_gates(i, 1 * dic + j) +
                 ws_gemm_state(i, dic + j) + bias(1, j));
             ws_gates(i, 2 * dic + j) = tanh_fwd(ws_gates(i, 2 * dic + j) +
-                ws_gates(i, 1 * dic + j) * Wh_b + bias(2, j));
-            states_t_l(i, j) = states_tm1_l(i, j) * ws_gates(i, 0 * dic + j) +
-                (1.0f - ws_gates(i, 0 * dic + j)) * ws_gates(i, 2 * dic + j);
+                ws_gates(i, 0 * dic + j) * Wh_b + bias(2, j));
+            states_t_l(i, j) = states_tm1_l(i, j) * ws_gates(i, 1 * dic + j) +
+                (1.0f - ws_gates(i, 1 * dic + j)) * ws_gates(i, 2 * dic + j);
             if (is_training) ws_Wh_b(i, j) = Wh_b;
         }
     });
@@ -395,18 +395,19 @@ elemwise_sig(_ref_rnn_common_t<prop_kind::backward>::gru_lbr_elemwise) {
             float h = states_tm1_l(i, j);
             float dHt = diff_states_tp1_l(0, 0, i, j)
                     + diff_states_t_lp1(n_states, 0, i, j);
-            float dG0 = (h - ws_gates(i, 2 * dic + j)) * dHt
-                    * x_m_square(ws_gates(i, 0 * dic + j));
-            float dG2 = (1.0f - ws_gates(i, 0 * dic + j)) * dHt;
-            float dG1 = ws_Wh_b(i, j) * dG2
+            float dzt = (h - ws_gates(i, 2 * dic + j)) * dHt
                     * x_m_square(ws_gates(i, 1 * dic + j));
+            float dG2 = (1.0f - ws_gates(i, 1 * dic + j)) * dHt;
             dG2 *= one_m_square(ws_gates(i, 2 * dic + j));
+            float drt = ws_Wh_b(i, j) * dG2
+                    * x_m_square(ws_gates(i, 0 * dic + j));
 
-            diff_states_t_l(0, 0, i, j) = dHt * ws_gates(i, 0 * dic + j);
+
+            diff_states_t_l(0, 0, i, j) = dHt * ws_gates(i, 1 * dic + j);
             ws_gates(i, 2 * dic + j) = dG2;
-            ws_gates_r(i, 2 * dic + j) = dG2 * ws_gates(i, 1 * dic + j);
-            ws_gates(i, 0 * dic + j) = ws_gates_r(i, 0 * dic + j) = dG0;
-            ws_gates(i, 1 * dic + j) = ws_gates_r(i, 1 * dic + j) = dG1;
+            ws_gates_r(i, 2 * dic + j) = dG2 * ws_gates(i, 0 * dic + j);
+            ws_gates(i, 1 * dic + j) = ws_gates_r(i, 1 * dic + j) = dzt;
+            ws_gates(i, 0 * dic + j) = ws_gates_r(i, 0 * dic + j) = drt;
         }
     });
 }
